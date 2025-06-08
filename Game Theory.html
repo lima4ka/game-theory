@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Интерактивная история: Муркин кефир</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #f0f0e8;
+            color: #222;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: flex-end;
+            align-items: center;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        #game-container {
+            width: 640px;
+            max-width: 95vw;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        #speaker {
+            font-weight: 700;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        #text-box {
+            min-height: 130px;
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        #choices {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        button.choice-btn {
+            padding: 12px 18px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            background-color: #4a75c9;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.25s ease;
+        }
+
+        button.choice-btn:hover {
+            background-color: #2e56a3;
+        }
+
+        #back-btn {
+            padding: 6px 12px;
+            font-size: 14px;
+            background: #4a75c9;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            user-select: none;
+            top: 10px;
+            left: -112px;
+            width: 100px;
+            position: absolute;
+            height: 61px;
+            color: white;
+        }
+
+        #back-btn:hover {
+            background: #aaa;
+            color: black;
+        }
+
+        #nazad {
+            font-size: 50px;
+            position: absolute;
+            left: 24px;
+            top: -6px;
+        }
+
+        .character-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            /* Чтобы не мешать кликам */
+            z-index: 10;
+        }
+
+        .character-img {
+            position: absolute;
+            height: 105.7vh;
+            bottom: 0px;
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+
+        #janiya-img {
+            right: -1vw;
+        }
+
+        #diana-img {
+            left: -1vw;
+            top: -1vw;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="character-wrapper"></div>
+    <!-- Фоновые персонажи -->
+    <img id="janiya-img" class="character-img" style="display: none;"
+        src="https://raw.githubusercontent.com/lima4ka/game-theory/main/Janiya.png" alt="Жания">
+    <img id="diana-img" class="character-img" style="display: none;"
+        src="https://raw.githubusercontent.com/lima4ka/game-theory/main/Диана.png" alt="Диана">
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <div id="game-container">
+        <button id="back-btn">
+            <div id="nazad">←</div>
+        </button>
+        <div id="speaker"></div>
+        <div id="text-box"></div>
+        <div id="choices"></div>
+    </div>
+
+    <script>
+        // История с выбором, спикером, текстом, и картинками:
+        // ключ: { speaker, text, choices: [{text, next}], images: {background, character} }
+
+        const story = {
+            start: {
+                speaker: 'Мурка',
+                text: 'Ребята, подождите меня, я сейчас пойду в лес, но скоро вернусь, не балуйтесь',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/муркаааа.jpg',      // пример пути, ты потом поменяешь
+                },
+                choices: [
+                    { text: 'Начать баловаться', next: 'dabbling' },
+                    { text: 'Пойти за ним в лес', next: 'forest' }
+                ]
+            },
+            dabbling: {
+                speaker: '',
+                text: 'Вы подошли к девочкам',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/девочки.jpg',
+                    character: 'img/lima_thinking.png'
+                },
+                choices: [
+                    { text: 'Поговорить с Дианой', next: 'Diana' },
+                    { text: 'Поговорить с Жанией', next: 'Janiya' }
+                ]
+            },
+            forest: {
+                speaker: '',
+                text: 'Вы заблудились, и теперь вы живете с енотами',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/енотыы.jpg',
+                    character: 'img/lima_sneaky.png'
+                },
+                choices: [
+                    { text: 'Начать сначала', next: 'start' }
+                ]
+            },
+            Diana: {
+                speaker: 'Диана',
+                text: 'Привет Лима! Как твое настроение?',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/диана1.jpg',
+                    character: 'img/katya_smile.png'
+                },
+                choices: [
+                    { text: 'Я видела стакан кефира в холодильнике, почему бы нам не выпить его вместе?', next: 'drinkKefir' },
+                    { text: 'Я видела стакан кефира в холодильнике, я хочу выпить его', next: 'drinkKefir1' }
+                ]
+            },
+            Janiya: {
+                speaker: 'Жания',
+                text: 'Привет Лима! Ты выглядишь подозрительно...',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/жания1.jpg',
+                    character: 'img/lima_happy.png'
+                },
+                choices: [
+                    { text: 'Я видела стакан кефира в холодильнике, почему бы нам не разделить его на двоих?', next: 'Janiya1' },
+                    { text: 'Я видела стакан кефира в холодильнике, он выглядит прохладным и очень вкусным', next: 'Janiya2' }
+                ]
+            },
+            drinkKefir: {
+                speaker: 'Диана',
+                text: 'Это кефир Мурки, у него остался только один стакан, он очень расстроиться если мы выпьем его',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/диана2.jpg',
+                    character: 'img/lima_happy.png'
+                },
+                choices: [
+                    { text: 'Закричать о том что в холодильнике кефир', next: 'drinkKefir2' },
+                    { text: 'Поговорить с Жанией', next: 'Janiya' },
+                    { text: 'Пустить слух', next: 'ear' }
+                ]
+            },
+            drinkKefir1: {
+                speaker: 'Диана',
+                text: 'Это кефир Мурки, у него остался только один стакан, я думаю что все хотят пропробовать его, но Мурка наверняка очень расстроиться если придет и не увидит своего кефира',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/диана2.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Закричать о том что в холодильнике кефир', next: 'drinkKefir2' },
+                    { text: 'Поговорить с Жанией', next: 'Janiya' },
+                    { text: 'Пустить слух', next: 'ear' }
+                ]
+            },
+            drinkKefir2: {
+                speaker: '',
+                text: 'Диана заставила вас замолчать, и теперь вы сидите в подвале без еды и кефира',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/подвал.jpg',
+                    character: 'img/lima_smile.png'
+                },
+                choices: [
+                    { text: 'Попробовать снова', next: 'Diana' }
+                ]
+            },
+            Janiya1: {
+                speaker: 'Жания',
+                text: 'Какая заманчивая идея, нужно все сделать тайком!',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/жания2.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Пойти и выпить кефир вместе с Жанией', next: 'Kahtanka' },
+                    { text: 'Пустить слух', next: 'ear' }
+                ]
+            },
+            Kahtanka: {
+                speaker: '',
+                text: '!Каштанка услышала ваш разговор, вам не удалось ничего выпить и теперь все знают что в холодильнике стакан кефира!',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/каштанка.jpg',
+                    character: 'img/lima_sorry.png'
+                },
+                choices: [
+                    { text: 'Остаться в тени', next: 'Lera' }
+                ]
+            },
+            Janiya2: {
+                speaker: 'Жания',
+                text: 'В таком случае, мы могли бы выпить его в двоем пока никто не видит ))',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/жания2.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Пойти и выпить кефир вместе с Жанией', next: 'Kahtanka' },
+                    { text: 'Пустить слух', next: 'ear' }
+                ]
+            },
+            Lera: {
+                speaker: 'Лера',
+                text: 'Девочки если мы выпьет кефир, то Мурка очень расстроиться! И вы подорвете доверие ваших товарищей! Не смотря на то что этот кефир такой белый, сливочный, и единственный в своем роде...',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/лера.jpg',
+                    character: 'img/lima_peace.png'
+                },
+                choices: [
+                    { text: '→', next: 'Avtor' },
+                ]
+            },
+            Lera1: {
+                speaker: 'Лера',
+                text: 'Девочки если мы выпьет кефир, то Мурка очень расстроиться! И вы подорвете доверие ваших товарищей! Не смотря на то что этот кефир такой белый, сливочный, и единственный в своем роде...',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/лера.jpg',
+                    character: 'img/lima_peace.png'
+                },
+                choices: [
+                    { text: 'Выпить кефир', next: 'drinkKefir7' },
+                    { text: 'Отдать кефир Лерии', next: 'Leriya' }
+                ]
+            },
+            Avtor: {
+                speaker: '',
+                text: 'Но никто не узнает если сделать это незаметно) *Выбирите свою судьбу, и судьбу товарищей*',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/лес.jpg',
+                    character: 'img/murka_happy.png'
+                },
+                choices: [
+                    { text: 'Кто то из девочек незаметно выпьет кефир', next: 'drinkKefir4' },
+                    { text: 'Выпить кефир самой', next: 'drinkKefir7' },
+                    { text: 'Поделить кефир на всех девочек', next: 'drinkKefir3' },
+                    { text: 'Подумать о Мурке и не пить кефир', next: 'drinkKefir6' },
+                ]
+            },
+            drinkKefir3: {
+                speaker: 'Выигрывают еноты',
+                text: 'Девочки договариваются честно делить кефир, пьют вместе. Это — кооперативная стратегия или равновесие Нэша, когда все придерживаются договорённости. В таком случае Мурка будет расстроен, когда вернётся домой и не увидит свой кефир в холодильнике, в итоге вы все равно будите жить с енотами.',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/енотыыы.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Начать заново', next: 'start' }
+                ]
+            },
+            drinkKefir4: {
+                speaker: 'Проигрывают все',
+                text: 'В итоге, ВСЕ, незаметно от друг друга, по чуть-чуть пьют кефир, он заканчивается, а потом начинается ссора. Никто не получает удовольствия. Это — доминация стратегии "выпить втайне", что ведёт к проигрышу всех.',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/драка.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Начать заново', next: 'start' }
+                ]
+            },
+            drinkKefir6: {
+                speaker: 'Выигрывают все',
+                text: 'Кефир никто не трогал, девочки решили не пить. Мурка возвращается домой и, обнаружив полный стакан, понимает, что девочки пожертвовали своими желаниями. Он разделяет кефир со всеми, увидев их кислые мины. Это — стратегия терпения, где Мурка выигрывает долгосрочно благодаря доверию.',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/победа.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Начать заново', next: 'start' }
+                ]
+            },
+            ear: {
+                speaker: '',
+                text: '!Вы пустили слух, теперь все знают что в холодильнике стакан кефира!',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/девченки.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Остаться в тени', next: 'Lera1' },
+                ]
+            },
+            drinkKefir7: {
+                speaker: '',
+                text: 'Вы решаете выпить весь кефир сами. Когда девочки узнают, что кефир исчез, они разозлятся на вас. Мурка увидит пустой стакан и поймёт, что вы не учились, а пили кефир. Он глубоко расстроится вашим эгоизмом. Отношения с девочками испортятся: они больше не будут доверять вам, Мурка отдаст вас на съедение енотам, а Лерия не будет с вами больше общаться так как вы не поделились с ней.',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/мурка1.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Начать заново', next: 'start' }
+                ]
+            },
+            Leriya: {
+                speaker: '',
+                text: 'Лерия решает выпить весь кефир сама, не делясь с другими. Когда Мурка возвращается домой и замечает пустой стакан, Лерия признаётся, что выпила кефир. Однако Мурка сразу прощает её, потому что они женаты, а доверие и любовь сильнее одного стакана кефира. Все девочки удивлены таким исходом: Лерия получает удовольствие от кефира и сохраняет отношения с Муркой. Это — стратегия связи, когда союзные отношения (брак) меняют платёжную матрицу и позволяют одному игроку действовать эгоистично без серьёзных последствий.',
+                images: {
+                    background: 'https://raw.githubusercontent.com/lima4ka/game-theory/main/лерияИмурка.jpg',
+                    character: ''
+                },
+                choices: [
+                    { text: 'Начать заново', next: 'start' }
+                ]
+            },
+        };
+
+        const speakerElem = document.getElementById('speaker');
+        const textBox = document.getElementById('text-box');
+        const choicesDiv = document.getElementById('choices');
+        const backBtn = document.getElementById('back-btn');
+
+        let history = [];
+        let currentNodeKey = 'start';
+
+        function showNode(key) {
+            currentNodeKey = key;
+            const node = story[key];
+
+            // Сохраняем в историю, если это не первый показ
+            if (history.length === 0 || history[history.length - 1] !== key) {
+                history.push(key);
+            }
+
+            speakerElem.textContent = node.speaker || '';
+            textBox.textContent = node.text || '';
+
+            // Меняем фон и управляем отображением девочек
+            if (node.images && node.images.background) {
+                const bg = node.images.background;
+                document.body.style.backgroundImage = `url(${bg})`;
+
+                // Показываем девочек только если фон — девочки.jpg
+                if (bg.includes("девочки.jpg")) {
+                    document.getElementById("janiya-img").style.display = "block";
+                    document.getElementById("diana-img").style.display = "block";
+                } else {
+                    document.getElementById("janiya-img").style.display = "none";
+                    document.getElementById("diana-img").style.display = "none";
+                }
+            } else {
+                document.body.style.backgroundImage = 'none';
+                document.getElementById("janiya-img").style.display = "none";
+                document.getElementById("diana-img").style.display = "none";
+            }
+
+            // Кнопки выбора
+            choicesDiv.innerHTML = '';
+            if (node.choices && node.choices.length > 0) {
+                node.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = choice.text;
+                    btn.onclick = () => {
+                        history.push(choice.next);
+                        showNode(choice.next);
+                        updateBackButton();
+                    };
+                    choicesDiv.appendChild(btn);
+                });
+            }
+
+            updateBackButton();
+        }
+
+        function updateBackButton() {
+            backBtn.style.display = history.length > 1 ? 'block' : 'none';
+        }
+
+        backBtn.onclick = () => {
+            if (history.length > 1) {
+                history.pop(); // текущий
+                const previous = history.pop(); // предыдущий
+                showNode(previous);
+            }
+        };
+
+        // Наведение на кнопки выбора
+        document.addEventListener('DOMContentLoaded', () => {
+            const choicesContainer = document.getElementById('choices');
+            const janiyaImg = document.getElementById('janiya-img');
+            const dianaImg = document.getElementById('diana-img');
+
+            choicesContainer.addEventListener('mouseover', (e) => {
+                if (e.target.matches('button.choice-btn')) {
+                    const text = e.target.textContent;
+                    if (text.includes('Жанией')) {
+                        janiyaImg.style.transform = 'scale(1.05)';
+                    }
+                    if (text.includes('Дианой')) {
+                        dianaImg.style.transform = 'scale(1.05)';
+                    }
+                }
+            });
+
+            choicesContainer.addEventListener('mouseout', (e) => {
+                if (e.target.matches('button.choice-btn')) {
+                    janiyaImg.style.transform = 'scale(1)';
+                    dianaImg.style.transform = 'scale(1)';
+                }
+            });
+
+            // Показываем стартовую ноду после полной загрузки страницы
+            showNode(currentNodeKey);
+        });
+
+
+    </script>
+</body>
+
+</html>
